@@ -81,6 +81,7 @@ export default function Home() {
       <h1 className="text-4xl font-bold tracking-tight text-center">
         Tic Tac Toe
       </h1>
+      <p>A Basic Tic-Tac-Toe PVP or PVC</p>
 
       {/* Mode Selector */}
       <div className="flex gap-2">
@@ -147,6 +148,8 @@ export default function Home() {
           Reset All Scores
         </Button>
       </div>
+
+      <p>Created by Reinier Mariscotes</p>
     </main>
   )
 }

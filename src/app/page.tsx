@@ -1,103 +1,210 @@
-import Image from "next/image";
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+
+const initialBoard = Array<string | null>(9).fill(null)
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [board, setBoard] = useState(initialBoard)
+  const [xIsNext, setXIsNext] = useState(true)
+  const [mode, setMode] = useState<'pvp' | 'pvc'>('pvp')
+  const [xWins, setXWins] = useState(0)
+  const [oWins, setOWins] = useState(0)
+  const [draws, setDraws] = useState(0)
+  const winner = calculateWinner(board)
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+  // Handle a square click (only when it's a human turn)
+  const handleClick = (idx: number) => {
+    if (
+      board[idx] ||
+      winner ||
+      (mode === 'pvc' && !xIsNext) // block O’s turn in pvc mode
+    ) {
+      return
+    }
+    const next = board.slice()
+    next[idx] = xIsNext ? 'X' : 'O'
+    setBoard(next)
+    setXIsNext(!xIsNext)
+  }
+
+  // Simple AI: pick a random empty square
+  const computerMove = () => {
+  const move = getBestMove(board)
+  if (move === -1) return
+  const newBoard = [...board]
+  newBoard[move] = 'O'
+  setBoard(newBoard)
+  setXIsNext(true)
 }
+
+
+  // When it's computer’s turn, schedule its move
+  useEffect(() => {
+    if (mode === 'pvc' && !xIsNext && !winner) {
+      const t = setTimeout(computerMove, 500)
+      return () => clearTimeout(t)
+    }
+  }, [board, xIsNext, mode, winner])
+
+  // Watch for wins/draws and update scoreboard
+  useEffect(() => {
+    if (winner) {
+      setTimeout(() => {
+        if (winner === 'X') setXWins(x => x + 1)
+        else setOWins(o => o + 1)
+        resetBoard()
+      }, 300)
+    } else if (!winner && board.every(Boolean)) {
+      setTimeout(() => {
+        setDraws(d => d + 1)
+        resetBoard()
+      }, 300)
+    }
+  }, [winner, board])
+
+  const resetBoard = () => {
+    setBoard(initialBoard)
+    setXIsNext(true)
+  }
+  const resetAll = () => {
+    setXWins(0)
+    setOWins(0)
+    setDraws(0)
+    resetBoard()
+  }
+
+  return (
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-black p-6 text-white space-y-8">
+      <h1 className="text-4xl font-bold tracking-tight text-center">
+        Tic Tac Toe
+      </h1>
+
+      {/* Mode Selector */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          className={mode === 'pvp' ? 'bg-blue-600' : 'bg-gray-700'}
+          onClick={() => setMode('pvp')}
+        >
+          2‑Player
+        </Button>
+        <Button
+          size="sm"
+          className={mode === 'pvc' ? 'bg-blue-600' : 'bg-gray-700'}
+          onClick={() => setMode('pvc')}
+        >
+          Vs Computer
+        </Button>
+      </div>
+
+      {/* Scoreboard */}
+      <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+        {[
+          ['X Wins', xWins],
+          ['O Wins', oWins],
+          ['Draws', draws],
+        ].map(([label, count]) => (
+          <Card key={label} className="w-36 text-center bg-white text-black shadow">
+            <CardContent className="pt-4 font-semibold">
+              {label}
+              <div className="text-3xl mt-1">{count}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Status */}
+      <div className="text-lg">
+        {winner
+          ? `🏆 Winner: ${winner}`
+          : board.every(Boolean)
+          ? '🤝 It’s a draw!'
+          : `Next: ${xIsNext ? 'X' : 'O'}`}
+      </div>
+
+      {/* Game Board */}
+      <div className="grid grid-cols-3 gap-4">
+        {board.map((v, i) => (
+          <button
+            key={i}
+            className="w-24 h-24 md:w-28 md:h-28 rounded-xl border-2 border-gray-600 bg-gray-700 text-white text-4xl font-bold flex items-center justify-center hover:bg-gray-600 transition"
+            onClick={() => handleClick(i)}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <Button onClick={resetBoard} className="bg-blue-600 hover:bg-blue-700">
+          Restart Game
+        </Button>
+        <Button variant="destructive" onClick={resetAll}>
+          Reset All Scores
+        </Button>
+      </div>
+    </main>
+  )
+}
+
+function calculateWinner(s: (string | null)[]) {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ] as const
+  for (const [a, b, c] of lines) {
+    if (s[a] && s[a] === s[b] && s[a] === s[c]) {
+      return s[a]
+    }
+  }
+  return null
+}
+
+function smartAIMove(board: (string | null)[], isMaximizing: boolean): number {
+  const winner = calculateWinner(board)
+  if (winner === 'O') return 10
+  if (winner === 'X') return -10
+  if (board.every(Boolean)) return 0
+
+  const moves: number[] = []
+  for (let i = 0; i < 9; i++) {
+    if (!board[i]) {
+      board[i] = isMaximizing ? 'O' : 'X'
+      const score = smartAIMove(board, !isMaximizing)
+      moves.push(score)
+      board[i] = null
+    }
+  }
+
+  return isMaximizing ? Math.max(...moves) : Math.min(...moves)
+}
+
+function getBestMove(board: (string | null)[]) {
+  let bestScore = -Infinity
+  let move = -1
+
+  for (let i = 0; i < 9; i++) {
+    if (!board[i]) {
+      board[i] = 'O'
+      const score = smartAIMove(board, false)
+      board[i] = null
+      if (score > bestScore) {
+        bestScore = score
+        move = i
+      }
+    }
+  }
+
+  return move
+}
+
